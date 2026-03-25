@@ -6,6 +6,7 @@
 #include <vector>
 
 #include "order.h"
+#include "trade.h"
 
 class OrderBook {
 public:
@@ -15,6 +16,9 @@ public:
     void cancelOrder(int orderId);
     void matchOrders();
     void printOrderBook() const;
+
+    const std::vector<Trade>& trades() const { return trades_; }
+    void clearTrades();
 
 private:
     struct BuyCmp {
@@ -33,6 +37,7 @@ private:
     std::unordered_map<int, Order> orders_;
     std::priority_queue<int, std::vector<int>, BuyCmp> buyHeap_;
     std::priority_queue<int, std::vector<int>, SellCmp> sellHeap_;
+    std::vector<Trade> trades_;
 };
 
 #endif

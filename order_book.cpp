@@ -6,14 +6,16 @@
 
 namespace {
 
-bool buyLowerPriority(const Order& a, const Order& b) {
+// Max-heap by price (higher is better), then earliest timestamp (smaller is better).
+bool buyOrderHasLowerPriority(const Order& a, const Order& b) {
     if (a.price() != b.price()) {
         return a.price() < b.price();
     }
     return a.timestamp() > b.timestamp();
 }
 
-bool sellLowerPriority(const Order& a, const Order& b) {
+// Min-heap by price (lower is better), then earliest timestamp (smaller is better).
+bool sellOrderHasLowerPriority(const Order& a, const Order& b) {
     if (a.price() != b.price()) {
         return a.price() > b.price();
     }
@@ -22,21 +24,21 @@ bool sellLowerPriority(const Order& a, const Order& b) {
 
 }  // namespace
 
-bool OrderBook::BuyCmp::operator()(int lhs, int rhs) const {
+bool OrderBook::BuyOrderComparator::operator()(int lhs, int rhs) const {
     const Order& a = orders->at(lhs);
     const Order& b = orders->at(rhs);
-    return buyLowerPriority(a, b);
+    return buyOrderHasLowerPriority(a, b);
 }
 
-bool OrderBook::SellCmp::operator()(int lhs, int rhs) const {
+bool OrderBook::SellOrderComparator::operator()(int lhs, int rhs) const {
     const Order& a = orders->at(lhs);
     const Order& b = orders->at(rhs);
-    return sellLowerPriority(a, b);
+    return sellOrderHasLowerPriority(a, b);
 }
 
 OrderBook::OrderBook()
-    : buyHeap_(BuyCmp{&orders_}),
-      sellHeap_(SellCmp{&orders_}) {}
+    : buyHeap_(BuyOrderComparator{&orders_}),
+      sellHeap_(SellOrderComparator{&orders_}) {}
 
 void OrderBook::addOrder(const Order& order) {
     if (orders_.count(order.orderId()) != 0) {
@@ -96,6 +98,10 @@ void OrderBook::matchOrders() {
         }
 
         const int tradeQty = std::min(buy.quantity(), sell.quantity());
+        const double tradePrice = sell.price();
+        const long long tradeTs = std::max(buy.timestamp(), sell.timestamp());
+
+        trades_.emplace_back(buyId, sellId, tradePrice, tradeQty, tradeTs);
 
         buy.setQuantity(buy.quantity() - tradeQty);
         sell.setQuantity(sell.quantity() - tradeQty);
@@ -109,6 +115,10 @@ void OrderBook::matchOrders() {
             sellHeap_.pop();
         }
     }
+}
+
+void OrderBook::clearTrades() {
+    trades_.clear();
 }
 
 void OrderBook::printOrderBook() const {
@@ -127,16 +137,10 @@ void OrderBook::printOrderBook() const {
     }
 
     std::sort(buys.begin(), buys.end(), [](const Order* a, const Order* b) {
-        if (a->price() != b->price()) {
-            return a->price() > b->price();
-        }
-        return a->timestamp() < b->timestamp();
+        return buyOrderHasLowerPriority(*b, *a);
     });
     std::sort(sells.begin(), sells.end(), [](const Order* a, const Order* b) {
-        if (a->price() != b->price()) {
-            return a->price() < b->price();
-        }
-        return a->timestamp() < b->timestamp();
+        return sellOrderHasLowerPriority(*b, *a);
     });
 
     std::cout << std::fixed << std::setprecision(2);
