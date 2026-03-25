@@ -28,6 +28,10 @@ void MatchingEngine::saveTradesToFile(const std::string& filename) const {
     orderBook_.saveTradesToFile(filename);
 }
 
+OrderBook::LatencyStats MatchingEngine::latencyStats() const {
+    return orderBook_.latencyStats();
+}
+
 const std::vector<Trade>& MatchingEngine::trades() const {
     return orderBook_.trades();
 }

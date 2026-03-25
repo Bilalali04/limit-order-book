@@ -15,6 +15,7 @@ public:
     void printOrderBook() const;
     void saveOrderBookToFile(const std::string& filename) const;
     void saveTradesToFile(const std::string& filename) const;
+    OrderBook::LatencyStats latencyStats() const;
 
     const std::vector<Trade>& trades() const;
     void clearTrades();

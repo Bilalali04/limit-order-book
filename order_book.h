@@ -2,6 +2,7 @@
 #define ORDER_BOOK_H
 
 #include <fstream>
+#include <limits>
 #include <queue>
 #include <string>
 #include <unordered_map>
@@ -12,6 +13,13 @@
 
 class OrderBook {
 public:
+    struct LatencyStats {
+        double averageMs = 0.0;
+        double minMs = 0.0;
+        double maxMs = 0.0;
+        std::size_t samples = 0;
+    };
+
     OrderBook();
 
     void addOrder(const Order& order);
@@ -21,6 +29,7 @@ public:
     void printOrderBook() const;
     void saveOrderBookToFile(const std::string& filename) const;
     void saveTradesToFile(const std::string& filename) const;
+    LatencyStats latencyStats() const;
 
     const std::vector<Trade>& trades() const { return trades_; }
     void clearTrades();
@@ -46,11 +55,18 @@ private:
     void executeMarketOrder(int orderId);
     void logOrder(const Order& order);
     void logTrade(const Trade& trade);
+    void recordLatencyForOrder(int orderId, long long tradeExecNs);
+    static long long nowNs();
 
     std::unordered_map<int, Order> orders_;
+    std::unordered_map<int, long long> orderAddTimesNs_;
     std::priority_queue<int, std::vector<int>, BuyOrderComparator> buyHeap_;
     std::priority_queue<int, std::vector<int>, SellOrderComparator> sellHeap_;
     std::vector<Trade> trades_;
+    double latencySumMs_ = 0.0;
+    double latencyMinMs_ = std::numeric_limits<double>::max();
+    double latencyMaxMs_ = 0.0;
+    std::size_t latencySamples_ = 0;
     std::ofstream ordersLog_;
     std::ofstream tradesLog_;
 };

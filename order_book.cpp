@@ -1,6 +1,7 @@
 #include "order_book.h"
 
 #include <algorithm>
+#include <chrono>
 #include <fstream>
 #include <iomanip>
 #include <iostream>
@@ -65,12 +66,34 @@ void OrderBook::logTrade(const Trade& trade) {
                << '\n';
 }
 
+long long OrderBook::nowNs() {
+    return std::chrono::duration_cast<std::chrono::nanoseconds>(
+        std::chrono::steady_clock::now().time_since_epoch()).count();
+}
+
+void OrderBook::recordLatencyForOrder(int orderId, long long tradeExecNs) {
+    const auto it = orderAddTimesNs_.find(orderId);
+    if (it == orderAddTimesNs_.end()) {
+        return;
+    }
+    const long long deltaNs = tradeExecNs - it->second;
+    if (deltaNs < 0) {
+        return;
+    }
+    const double latencyMs = static_cast<double>(deltaNs) / 1'000'000.0;
+    latencySumMs_ += latencyMs;
+    latencyMinMs_ = std::min(latencyMinMs_, latencyMs);
+    latencyMaxMs_ = std::max(latencyMaxMs_, latencyMs);
+    ++latencySamples_;
+}
+
 void OrderBook::addOrder(const Order& order) {
     const int id = order.orderId();
     if (orders_.count(id) != 0) {
         return;
     }
     orders_.emplace(id, order);
+    orderAddTimesNs_[id] = nowNs();
     logOrder(order);
     if (order.type() == OrderType::MARKET) {
         executeMarketOrder(id);
@@ -104,11 +127,15 @@ void OrderBook::executeMarketOrder(int orderId) {
             const long long tradeTs = std::max(marketOrder.timestamp(), sell.timestamp());
             trades_.emplace_back(orderId, sellId, tradePrice, tradeQty, tradeTs);
             logTrade(trades_.back());
+            const long long execNs = nowNs();
+            recordLatencyForOrder(orderId, execNs);
+            recordLatencyForOrder(sellId, execNs);
 
             marketOrder.setQuantity(marketOrder.quantity() - tradeQty);
             sell.setQuantity(sell.quantity() - tradeQty);
             if (sell.quantity() == 0) {
                 orders_.erase(sellId);
+                orderAddTimesNs_.erase(sellId);
                 sellHeap_.pop();
             }
         }
@@ -126,11 +153,15 @@ void OrderBook::executeMarketOrder(int orderId) {
             const long long tradeTs = std::max(marketOrder.timestamp(), buy.timestamp());
             trades_.emplace_back(buyId, orderId, tradePrice, tradeQty, tradeTs);
             logTrade(trades_.back());
+            const long long execNs = nowNs();
+            recordLatencyForOrder(buyId, execNs);
+            recordLatencyForOrder(orderId, execNs);
 
             marketOrder.setQuantity(marketOrder.quantity() - tradeQty);
             buy.setQuantity(buy.quantity() - tradeQty);
             if (buy.quantity() == 0) {
                 orders_.erase(buyId);
+                orderAddTimesNs_.erase(buyId);
                 buyHeap_.pop();
             }
         }
@@ -138,6 +169,7 @@ void OrderBook::executeMarketOrder(int orderId) {
 
     // Market orders are IOC-style: any remainder is discarded.
     orders_.erase(orderId);
+    orderAddTimesNs_.erase(orderId);
 }
 
 void OrderBook::rebuildBuyHeap() {
@@ -167,6 +199,7 @@ void OrderBook::cancelOrder(int orderId) {
     }
     const Side side = it->second.side();
     orders_.erase(it);
+    orderAddTimesNs_.erase(orderId);
     if (side == Side::BUY) {
         rebuildBuyHeap();
     } else if (side == Side::SELL) {
@@ -182,6 +215,7 @@ void OrderBook::modifyOrder(int orderId, double newPrice, int newQuantity) {
     const Side side = it->second.side();
     if (newQuantity <= 0) {
         orders_.erase(it);
+        orderAddTimesNs_.erase(orderId);
         if (side == Side::BUY) {
             rebuildBuyHeap();
         } else if (side == Side::SELL) {
@@ -245,19 +279,36 @@ void OrderBook::matchOrders() {
         const long long tradeTs = std::max(buy.timestamp(), sell.timestamp());
         trades_.emplace_back(buyId, sellId, tradePrice, tradeQty, tradeTs);
         logTrade(trades_.back());
+        const long long execNs = nowNs();
+        recordLatencyForOrder(buyId, execNs);
+        recordLatencyForOrder(sellId, execNs);
 
         buy.setQuantity(buy.quantity() - tradeQty);
         sell.setQuantity(sell.quantity() - tradeQty);
 
         if (buy.quantity() == 0) {
             orders_.erase(buyId);
+            orderAddTimesNs_.erase(buyId);
             buyHeap_.pop();
         }
         if (sell.quantity() == 0) {
             orders_.erase(sellId);
+            orderAddTimesNs_.erase(sellId);
             sellHeap_.pop();
         }
     }
+}
+
+OrderBook::LatencyStats OrderBook::latencyStats() const {
+    LatencyStats stats;
+    stats.samples = latencySamples_;
+    if (latencySamples_ == 0) {
+        return stats;
+    }
+    stats.averageMs = latencySumMs_ / static_cast<double>(latencySamples_);
+    stats.minMs = latencyMinMs_;
+    stats.maxMs = latencyMaxMs_;
+    return stats;
 }
 
 void OrderBook::clearTrades() {

@@ -11,6 +11,7 @@ struct Result {
     double totalSeconds = 0.0;
     double ordersPerSecond = 0.0;
     std::size_t trades = 0;
+    OrderBook::LatencyStats latency;
 };
 
 Result run(int orderCount) {
@@ -49,6 +50,7 @@ Result run(int orderCount) {
         ? static_cast<double>(orderCount) / totalSeconds
         : 0.0;
     r.trades = engine.trades().size();
+    r.latency = engine.latencyStats();
     return r;
 }
 
@@ -62,7 +64,16 @@ int main() {
         Result r = run(orderCount);
         std::cout << "  Total execution time: " << r.totalSeconds << " s\n";
         std::cout << "  Orders processed per second: " << r.ordersPerSecond << '\n';
-        std::cout << "  Trades recorded: " << r.trades << "\n\n";
+        std::cout << "  Trades recorded: " << r.trades << '\n';
+        if (r.latency.samples == 0) {
+            std::cout << "  Average latency: N/A\n";
+            std::cout << "  Maximum latency: N/A\n";
+            std::cout << "  Minimum latency: N/A\n\n";
+        } else {
+            std::cout << "  Average latency: " << r.latency.averageMs << " ms\n";
+            std::cout << "  Maximum latency: " << r.latency.maxMs << " ms\n";
+            std::cout << "  Minimum latency: " << r.latency.minMs << " ms\n\n";
+        }
     }
 
     return 0;
