@@ -46,11 +46,70 @@ void OrderBook::addOrder(const Order& order) {
         return;
     }
     orders_.emplace(id, order);
+    if (order.type() == OrderType::MARKET) {
+        executeMarketOrder(id);
+        return;
+    }
     if (order.side() == Side::BUY) {
         buyHeap_.push(id);
     } else if (order.side() == Side::SELL) {
         sellHeap_.push(id);
     }
+}
+
+void OrderBook::executeMarketOrder(int orderId) {
+    auto marketIt = orders_.find(orderId);
+    if (marketIt == orders_.end()) {
+        return;
+    }
+    Order& marketOrder = marketIt->second;
+
+    if (marketOrder.side() == Side::BUY) {
+        while (marketOrder.quantity() > 0) {
+            pruneSellHeap();
+            if (sellHeap_.empty()) {
+                break;
+            }
+
+            const int sellId = sellHeap_.top();
+            Order& sell = orders_.at(sellId);
+            const int tradeQty = std::min(marketOrder.quantity(), sell.quantity());
+            const double tradePrice = sell.price();
+            const long long tradeTs = std::max(marketOrder.timestamp(), sell.timestamp());
+            trades_.emplace_back(orderId, sellId, tradePrice, tradeQty, tradeTs);
+
+            marketOrder.setQuantity(marketOrder.quantity() - tradeQty);
+            sell.setQuantity(sell.quantity() - tradeQty);
+            if (sell.quantity() == 0) {
+                orders_.erase(sellId);
+                sellHeap_.pop();
+            }
+        }
+    } else if (marketOrder.side() == Side::SELL) {
+        while (marketOrder.quantity() > 0) {
+            pruneBuyHeap();
+            if (buyHeap_.empty()) {
+                break;
+            }
+
+            const int buyId = buyHeap_.top();
+            Order& buy = orders_.at(buyId);
+            const int tradeQty = std::min(marketOrder.quantity(), buy.quantity());
+            const double tradePrice = buy.price();
+            const long long tradeTs = std::max(marketOrder.timestamp(), buy.timestamp());
+            trades_.emplace_back(buyId, orderId, tradePrice, tradeQty, tradeTs);
+
+            marketOrder.setQuantity(marketOrder.quantity() - tradeQty);
+            buy.setQuantity(buy.quantity() - tradeQty);
+            if (buy.quantity() == 0) {
+                orders_.erase(buyId);
+                buyHeap_.pop();
+            }
+        }
+    }
+
+    // Market orders are IOC-style: any remainder is discarded.
+    orders_.erase(orderId);
 }
 
 void OrderBook::rebuildBuyHeap() {
