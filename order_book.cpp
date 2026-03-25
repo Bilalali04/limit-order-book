@@ -1,8 +1,8 @@
 #include "order_book.h"
 
 #include <algorithm>
-#include <iostream>
 #include <iomanip>
+#include <iostream>
 
 namespace {
 
@@ -162,7 +162,7 @@ void OrderBook::printOrderBook() const {
         const Order& o = entry.second;
         if (o.side() == Side::BUY) {
             buys.push_back(&o);
-        } else {
+        } else if (o.side() == Side::SELL) {
             sells.push_back(&o);
         }
     }
@@ -174,17 +174,39 @@ void OrderBook::printOrderBook() const {
         return sellOrderHasLowerPriority(*b, *a);
     });
 
+    const std::ios::fmtflags oldFlags = std::cout.flags();
     std::cout << std::fixed << std::setprecision(2);
     std::cout << "--- Order book ---\n";
-    std::cout << "BUY  (price high -> low):\n";
-    for (const Order* o : buys) {
-        std::cout << "  id=" << o->orderId() << " price=" << o->price() << " qty=" << o->quantity()
-                  << " ts=" << o->timestamp() << '\n';
+    if (orders_.empty()) {
+        std::cout << "No open orders.\n";
+        std::cout << "------------------\n";
+        std::cout.flags(oldFlags);
+        return;
     }
-    std::cout << "SELL (price low -> high):\n";
-    for (const Order* o : sells) {
-        std::cout << "  id=" << o->orderId() << " price=" << o->price() << " qty=" << o->quantity()
-                  << " ts=" << o->timestamp() << '\n';
+
+    std::cout << "BUY  (price high -> low, then earlier time):\n";
+    if (buys.empty()) {
+        std::cout << "  (none)\n";
+    } else {
+        std::cout << "  " << std::setw(6) << "id" << std::setw(12) << "price" << std::setw(8) << "qty"
+                  << std::setw(14) << "timestamp" << '\n';
+        for (const Order* o : buys) {
+            std::cout << "  " << std::setw(6) << o->orderId() << std::setw(12) << o->price() << std::setw(8)
+                      << o->quantity() << std::setw(14) << o->timestamp() << '\n';
+        }
+    }
+
+    std::cout << "SELL (price low -> high, then earlier time):\n";
+    if (sells.empty()) {
+        std::cout << "  (none)\n";
+    } else {
+        std::cout << "  " << std::setw(6) << "id" << std::setw(12) << "price" << std::setw(8) << "qty"
+                  << std::setw(14) << "timestamp" << '\n';
+        for (const Order* o : sells) {
+            std::cout << "  " << std::setw(6) << o->orderId() << std::setw(12) << o->price() << std::setw(8)
+                      << o->quantity() << std::setw(14) << o->timestamp() << '\n';
+        }
     }
     std::cout << "------------------\n";
+    std::cout.flags(oldFlags);
 }
