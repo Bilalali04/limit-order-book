@@ -1,6 +1,7 @@
 #ifndef ORDER_BOOK_H
 #define ORDER_BOOK_H
 
+#include <fstream>
 #include <queue>
 #include <unordered_map>
 #include <vector>
@@ -40,11 +41,15 @@ private:
     void rebuildBuyHeap();
     void rebuildSellHeap();
     void executeMarketOrder(int orderId);
+    void logOrder(const Order& order);
+    void logTrade(const Trade& trade);
 
     std::unordered_map<int, Order> orders_;
     std::priority_queue<int, std::vector<int>, BuyOrderComparator> buyHeap_;
     std::priority_queue<int, std::vector<int>, SellOrderComparator> sellHeap_;
     std::vector<Trade> trades_;
+    std::ofstream ordersLog_;
+    std::ofstream tradesLog_;
 };
 
 #endif

@@ -1,6 +1,7 @@
 #include "order_book.h"
 
 #include <algorithm>
+#include <fstream>
 #include <iomanip>
 #include <iostream>
 
@@ -38,7 +39,31 @@ bool OrderBook::SellOrderComparator::operator()(int lhs, int rhs) const {
 
 OrderBook::OrderBook()
     : buyHeap_(BuyOrderComparator{&orders_}),
-      sellHeap_(SellOrderComparator{&orders_}) {}
+      sellHeap_(SellOrderComparator{&orders_}),
+      ordersLog_("orders.log", std::ios::app),
+      tradesLog_("trades.log", std::ios::app) {}
+
+void OrderBook::logOrder(const Order& order) {
+    if (!ordersLog_.is_open()) {
+        return;
+    }
+    ordersLog_ << "timestamp=" << order.timestamp()
+               << ", orderId=" << order.orderId()
+               << ", price=" << std::fixed << std::setprecision(2) << order.price()
+               << ", quantity=" << order.quantity()
+               << '\n';
+}
+
+void OrderBook::logTrade(const Trade& trade) {
+    if (!tradesLog_.is_open()) {
+        return;
+    }
+    tradesLog_ << "timestamp=" << trade.timestamp()
+               << ", orderId=" << trade.buyOrderId() << "/" << trade.sellOrderId()
+               << ", price=" << std::fixed << std::setprecision(2) << trade.price()
+               << ", quantity=" << trade.quantity()
+               << '\n';
+}
 
 void OrderBook::addOrder(const Order& order) {
     const int id = order.orderId();
@@ -46,6 +71,7 @@ void OrderBook::addOrder(const Order& order) {
         return;
     }
     orders_.emplace(id, order);
+    logOrder(order);
     if (order.type() == OrderType::MARKET) {
         executeMarketOrder(id);
         return;
@@ -77,6 +103,7 @@ void OrderBook::executeMarketOrder(int orderId) {
             const double tradePrice = sell.price();
             const long long tradeTs = std::max(marketOrder.timestamp(), sell.timestamp());
             trades_.emplace_back(orderId, sellId, tradePrice, tradeQty, tradeTs);
+            logTrade(trades_.back());
 
             marketOrder.setQuantity(marketOrder.quantity() - tradeQty);
             sell.setQuantity(sell.quantity() - tradeQty);
@@ -98,6 +125,7 @@ void OrderBook::executeMarketOrder(int orderId) {
             const double tradePrice = buy.price();
             const long long tradeTs = std::max(marketOrder.timestamp(), buy.timestamp());
             trades_.emplace_back(buyId, orderId, tradePrice, tradeQty, tradeTs);
+            logTrade(trades_.back());
 
             marketOrder.setQuantity(marketOrder.quantity() - tradeQty);
             buy.setQuantity(buy.quantity() - tradeQty);
@@ -216,6 +244,7 @@ void OrderBook::matchOrders() {
         const double tradePrice = sell.price();
         const long long tradeTs = std::max(buy.timestamp(), sell.timestamp());
         trades_.emplace_back(buyId, sellId, tradePrice, tradeQty, tradeTs);
+        logTrade(trades_.back());
 
         buy.setQuantity(buy.quantity() - tradeQty);
         sell.setQuantity(sell.quantity() - tradeQty);
