@@ -3,6 +3,7 @@
 
 #include <fstream>
 #include <queue>
+#include <string>
 #include <unordered_map>
 #include <vector>
 
@@ -18,6 +19,7 @@ public:
     void modifyOrder(int orderId, double newPrice, int newQuantity);
     void matchOrders();
     void printOrderBook() const;
+    void saveOrderBookToFile(const std::string& filename) const;
 
     const std::vector<Trade>& trades() const { return trades_; }
     void clearTrades();

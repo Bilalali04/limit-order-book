@@ -322,3 +322,56 @@ void OrderBook::printOrderBook() const {
     std::cout << "------------------\n";
     std::cout.flags(oldFlags);
 }
+
+void OrderBook::saveOrderBookToFile(const std::string& filename) const {
+    std::ofstream out(filename);
+    if (!out.is_open()) {
+        return;
+    }
+
+    std::unordered_map<double, int> buyLevels;
+    std::unordered_map<double, int> sellLevels;
+    buyLevels.reserve(orders_.size());
+    sellLevels.reserve(orders_.size());
+
+    for (const auto& entry : orders_) {
+        const Order& o = entry.second;
+        if (o.side() == Side::BUY) {
+            buyLevels[o.price()] += o.quantity();
+        } else if (o.side() == Side::SELL) {
+            sellLevels[o.price()] += o.quantity();
+        }
+    }
+
+    std::vector<std::pair<double, int>> buyRows;
+    std::vector<std::pair<double, int>> sellRows;
+    buyRows.reserve(buyLevels.size());
+    sellRows.reserve(sellLevels.size());
+
+    for (const auto& level : buyLevels) {
+        buyRows.push_back(level);
+    }
+    for (const auto& level : sellLevels) {
+        sellRows.push_back(level);
+    }
+
+    std::sort(buyRows.begin(), buyRows.end(), [](const std::pair<double, int>& a, const std::pair<double, int>& b) {
+        return a.first > b.first;
+    });
+    std::sort(sellRows.begin(), sellRows.end(), [](const std::pair<double, int>& a, const std::pair<double, int>& b) {
+        return a.first < b.first;
+    });
+
+    out << std::fixed << std::setprecision(2);
+    out << "BUY ORDERS:\n";
+    out << "Price | Total Quantity\n";
+    for (const auto& row : buyRows) {
+        out << row.first << " | " << row.second << '\n';
+    }
+    out << '\n';
+    out << "SELL ORDERS:\n";
+    out << "Price | Total Quantity\n";
+    for (const auto& row : sellRows) {
+        out << row.first << " | " << row.second << '\n';
+    }
+}
