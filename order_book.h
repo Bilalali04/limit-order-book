@@ -39,6 +39,7 @@ private:
     void pruneSellHeap();
     void rebuildBuyHeap();
     void rebuildSellHeap();
+    void executeMarketOrder(int orderId);
 
     std::unordered_map<int, Order> orders_;
     std::priority_queue<int, std::vector<int>, BuyOrderComparator> buyHeap_;

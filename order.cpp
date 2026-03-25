@@ -1,10 +1,18 @@
 #include "order.h"
 
 Order::Order()
-    : orderId_(0), price_(0.0), quantity_(0), side_(Side::BUY), timestamp_(0) {}
+    : orderId_(0), price_(0.0), quantity_(0), side_(Side::BUY), type_(OrderType::LIMIT), timestamp_(0) {}
 
 Order::Order(int orderId, double price, int quantity, Side side, long long timestamp)
-    : orderId_(orderId), price_(price), quantity_(quantity), side_(side), timestamp_(timestamp) {}
+    : orderId_(orderId),
+      price_(price),
+      quantity_(quantity),
+      side_(side),
+      type_(OrderType::LIMIT),
+      timestamp_(timestamp) {}
+
+Order::Order(int orderId, double price, int quantity, Side side, long long timestamp, OrderType type)
+    : orderId_(orderId), price_(price), quantity_(quantity), side_(side), type_(type), timestamp_(timestamp) {}
 
 int Order::orderId() const {
     return orderId_;
@@ -36,6 +44,14 @@ Side Order::side() const {
 
 void Order::setSide(Side s) {
     side_ = s;
+}
+
+OrderType Order::type() const {
+    return type_;
+}
+
+void Order::setType(OrderType t) {
+    type_ = t;
 }
 
 long long Order::timestamp() const {
