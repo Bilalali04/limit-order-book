@@ -20,6 +20,7 @@ public:
     void matchOrders();
     void printOrderBook() const;
     void saveOrderBookToFile(const std::string& filename) const;
+    void saveTradesToFile(const std::string& filename) const;
 
     const std::vector<Trade>& trades() const { return trades_; }
     void clearTrades();

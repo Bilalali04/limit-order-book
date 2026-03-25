@@ -3,6 +3,7 @@
 
 #include "order_book.h"
 
+#include <string>
 #include <vector>
 
 class MatchingEngine {
@@ -12,6 +13,8 @@ public:
     void modifyOrder(int orderId, double newPrice, int newQuantity);
     void matchOrders();
     void printOrderBook() const;
+    void saveOrderBookToFile(const std::string& filename) const;
+    void saveTradesToFile(const std::string& filename) const;
 
     const std::vector<Trade>& trades() const;
     void clearTrades();

@@ -20,6 +20,14 @@ void MatchingEngine::printOrderBook() const {
     orderBook_.printOrderBook();
 }
 
+void MatchingEngine::saveOrderBookToFile(const std::string& filename) const {
+    orderBook_.saveOrderBookToFile(filename);
+}
+
+void MatchingEngine::saveTradesToFile(const std::string& filename) const {
+    orderBook_.saveTradesToFile(filename);
+}
+
 const std::vector<Trade>& MatchingEngine::trades() const {
     return orderBook_.trades();
 }

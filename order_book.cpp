@@ -375,3 +375,24 @@ void OrderBook::saveOrderBookToFile(const std::string& filename) const {
         out << row.first << " | " << row.second << '\n';
     }
 }
+
+void OrderBook::saveTradesToFile(const std::string& filename) const {
+    std::ofstream out(filename);
+    if (!out.is_open()) {
+        return;
+    }
+
+    out << std::fixed << std::setprecision(2);
+    out << "TradeID | BuyOrderID | SellOrderID | Price | Quantity | Timestamp\n";
+    for (std::size_t i = 0; i < trades_.size(); ++i) {
+        const Trade& t = trades_[i];
+        const std::size_t tradeId = i + 1;
+        out << tradeId
+            << " | " << t.buyOrderId()
+            << " | " << t.sellOrderId()
+            << " | " << t.price()
+            << " | " << t.quantity()
+            << " | " << t.timestamp()
+            << '\n';
+    }
+}
