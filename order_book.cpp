@@ -41,14 +41,15 @@ OrderBook::OrderBook()
       sellHeap_(SellOrderComparator{&orders_}) {}
 
 void OrderBook::addOrder(const Order& order) {
-    if (orders_.count(order.orderId()) != 0) {
+    const int id = order.orderId();
+    if (orders_.count(id) != 0) {
         return;
     }
-    orders_.emplace(order.orderId(), order);
+    orders_.emplace(id, order);
     if (order.side() == Side::BUY) {
-        buyHeap_.push(order.orderId());
-    } else {
-        sellHeap_.push(order.orderId());
+        buyHeap_.push(id);
+    } else if (order.side() == Side::SELL) {
+        sellHeap_.push(id);
     }
 }
 
