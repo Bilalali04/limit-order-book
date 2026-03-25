@@ -53,8 +53,38 @@ void OrderBook::addOrder(const Order& order) {
     }
 }
 
+void OrderBook::rebuildBuyHeap() {
+    std::priority_queue<int, std::vector<int>, BuyOrderComparator> heap(BuyOrderComparator{&orders_});
+    for (const auto& entry : orders_) {
+        if (entry.second.side() == Side::BUY) {
+            heap.push(entry.first);
+        }
+    }
+    buyHeap_ = std::move(heap);
+}
+
+void OrderBook::rebuildSellHeap() {
+    std::priority_queue<int, std::vector<int>, SellOrderComparator> heap(SellOrderComparator{&orders_});
+    for (const auto& entry : orders_) {
+        if (entry.second.side() == Side::SELL) {
+            heap.push(entry.first);
+        }
+    }
+    sellHeap_ = std::move(heap);
+}
+
 void OrderBook::cancelOrder(int orderId) {
-    orders_.erase(orderId);
+    const auto it = orders_.find(orderId);
+    if (it == orders_.end()) {
+        return;
+    }
+    const Side side = it->second.side();
+    orders_.erase(it);
+    if (side == Side::BUY) {
+        rebuildBuyHeap();
+    } else if (side == Side::SELL) {
+        rebuildSellHeap();
+    }
 }
 
 void OrderBook::pruneBuyHeap() {
