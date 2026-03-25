@@ -87,6 +87,30 @@ void OrderBook::cancelOrder(int orderId) {
     }
 }
 
+void OrderBook::modifyOrder(int orderId, double newPrice, int newQuantity) {
+    const auto it = orders_.find(orderId);
+    if (it == orders_.end()) {
+        return;
+    }
+    const Side side = it->second.side();
+    if (newQuantity <= 0) {
+        orders_.erase(it);
+        if (side == Side::BUY) {
+            rebuildBuyHeap();
+        } else if (side == Side::SELL) {
+            rebuildSellHeap();
+        }
+        return;
+    }
+    it->second.setPrice(newPrice);
+    it->second.setQuantity(newQuantity);
+    if (side == Side::BUY) {
+        rebuildBuyHeap();
+    } else if (side == Side::SELL) {
+        rebuildSellHeap();
+    }
+}
+
 void OrderBook::pruneBuyHeap() {
     while (!buyHeap_.empty()) {
         const int id = buyHeap_.top();

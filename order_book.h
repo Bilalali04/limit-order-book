@@ -14,6 +14,7 @@ public:
 
     void addOrder(const Order& order);
     void cancelOrder(int orderId);
+    void modifyOrder(int orderId, double newPrice, int newQuantity);
     void matchOrders();
     void printOrderBook() const;
 

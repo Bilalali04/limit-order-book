@@ -8,6 +8,10 @@ void MatchingEngine::cancelOrder(int orderId) {
     orderBook_.cancelOrder(orderId);
 }
 
+void MatchingEngine::modifyOrder(int orderId, double newPrice, int newQuantity) {
+    orderBook_.modifyOrder(orderId, newPrice, newQuantity);
+}
+
 void MatchingEngine::matchOrders() {
     orderBook_.matchOrders();
 }
