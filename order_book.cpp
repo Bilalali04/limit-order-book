@@ -82,6 +82,7 @@ void OrderBook::pruneSellHeap() {
 }
 
 void OrderBook::matchOrders() {
+    // While best bid >= best ask: cross and record; otherwise stop.
     while (true) {
         pruneBuyHeap();
         pruneSellHeap();
@@ -101,7 +102,6 @@ void OrderBook::matchOrders() {
         const int tradeQty = std::min(buy.quantity(), sell.quantity());
         const double tradePrice = sell.price();
         const long long tradeTs = std::max(buy.timestamp(), sell.timestamp());
-
         trades_.emplace_back(buyId, sellId, tradePrice, tradeQty, tradeTs);
 
         buy.setQuantity(buy.quantity() - tradeQty);
