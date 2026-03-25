@@ -21,22 +21,27 @@ public:
     void clearTrades();
 
 private:
-    struct BuyCmp {
+    // priority_queue Compare: returns true if lhs has lower priority than rhs (top = highest priority).
+    // Heaps store orderId; lookup in orders_ for current price/timestamp (partial fills stay correct).
+
+    struct BuyOrderComparator {
         std::unordered_map<int, Order>* orders;
         bool operator()(int lhs, int rhs) const;
     };
 
-    struct SellCmp {
+    struct SellOrderComparator {
         std::unordered_map<int, Order>* orders;
         bool operator()(int lhs, int rhs) const;
     };
 
     void pruneBuyHeap();
     void pruneSellHeap();
+    void rebuildBuyHeap();
+    void rebuildSellHeap();
 
     std::unordered_map<int, Order> orders_;
-    std::priority_queue<int, std::vector<int>, BuyCmp> buyHeap_;
-    std::priority_queue<int, std::vector<int>, SellCmp> sellHeap_;
+    std::priority_queue<int, std::vector<int>, BuyOrderComparator> buyHeap_;
+    std::priority_queue<int, std::vector<int>, SellOrderComparator> sellHeap_;
     std::vector<Trade> trades_;
 };
 
