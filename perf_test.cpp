@@ -2,41 +2,68 @@
 
 #include <chrono>
 #include <iostream>
+#include <vector>
 #include <random>
 
-int main() {
-    constexpr int kOrders = 100'000;
+namespace {
 
-    MatchingEngine engine;
+struct Result {
+    double totalSeconds = 0.0;
+    double ordersPerSecond = 0.0;
+    std::size_t trades = 0;
+};
+
+Result run(int orderCount) {
+    // Pre-generate random order parameters so timing focuses on the engine.
     std::mt19937 rng(42);
     std::uniform_real_distribution<double> priceDist(90.0, 110.0);
     std::uniform_int_distribution<int> qtyDist(1, 100);
     std::bernoulli_distribution sideDist(0.5);
 
-    const auto tAddStart = std::chrono::high_resolution_clock::now();
-    for (int i = 1; i <= kOrders; ++i) {
-        const Side side = sideDist(rng) ? Side::BUY : Side::SELL;
-        engine.addOrder(
-            Order(i, priceDist(rng), qtyDist(rng), side, static_cast<long long>(i)));
+    std::vector<double> prices(orderCount);
+    std::vector<int> quantities(orderCount);
+    std::vector<Side> sides(orderCount);
+
+    for (int i = 0; i < orderCount; ++i) {
+        prices[i] = priceDist(rng);
+        quantities[i] = qtyDist(rng);
+        sides[i] = sideDist(rng) ? Side::BUY : Side::SELL;
     }
-    const auto tAddEnd = std::chrono::high_resolution_clock::now();
 
-    const auto tMatchStart = std::chrono::high_resolution_clock::now();
+    MatchingEngine engine;
+
+    const auto tStart = std::chrono::high_resolution_clock::now();
+    for (int i = 0; i < orderCount; ++i) {
+        const int id = i + 1;
+        engine.addOrder(Order(id, prices[i], quantities[i], sides[i], static_cast<long long>(id)));
+    }
     engine.matchOrders();
-    const auto tMatchEnd = std::chrono::high_resolution_clock::now();
+    const auto tEnd = std::chrono::high_resolution_clock::now();
 
-    const double addMs =
-        std::chrono::duration<double, std::milli>(tAddEnd - tAddStart).count();
-    const double matchMs =
-        std::chrono::duration<double, std::milli>(tMatchEnd - tMatchStart).count();
-    const double totalMs =
-        std::chrono::duration<double, std::milli>(tMatchEnd - tAddStart).count();
+    const double totalSeconds =
+        std::chrono::duration<double>(tEnd - tStart).count();
 
-    std::cout << "Random order simulation (" << kOrders << " orders)\n";
-    std::cout << "  addOrder (total): " << addMs << " ms\n";
-    std::cout << "  matchOrders:      " << matchMs << " ms\n";
-    std::cout << "  wall total:       " << totalMs << " ms\n";
-    std::cout << "  trades recorded: " << engine.trades().size() << '\n';
+    Result r;
+    r.totalSeconds = totalSeconds;
+    r.ordersPerSecond = (totalSeconds > 0.0)
+        ? static_cast<double>(orderCount) / totalSeconds
+        : 0.0;
+    r.trades = engine.trades().size();
+    return r;
+}
+
+}  // namespace
+
+int main() {
+    const std::vector<int> scenarios = {100'000, 1'000'000};
+
+    for (int orderCount : scenarios) {
+        std::cout << "=== Scenario: " << orderCount << " random orders ===\n";
+        Result r = run(orderCount);
+        std::cout << "  Total execution time: " << r.totalSeconds << " s\n";
+        std::cout << "  Orders processed per second: " << r.ordersPerSecond << '\n';
+        std::cout << "  Trades recorded: " << r.trades << "\n\n";
+    }
 
     return 0;
 }
